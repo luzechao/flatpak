@@ -1,0 +1,11 @@
+{
+  "com.visualstudio.code": {
+    "app_id": "com.visualstudio.code",
+    "branch": "stable",
+    "homepage": "https://code.visualstudio.com",
+    "name": "Visual Studio Code",
+    "summary": "Code editing. Redefined.",
+    "updated_at": "2026-11-05 01:47 UTC",
+    "version": "1.145.0"
+  }
+}

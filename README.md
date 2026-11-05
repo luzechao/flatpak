@@ -44,7 +44,7 @@ flatpak update
 ## How It Works
 
 1. **Automated Upstream Tracking**:
-   - The [Flatpak Channel CI](.github/workflows/flatpak-channel.yml) workflow runs every 6 hours (and on push / manual dispatch).
+   - The [Flatpak Channel CI](.github/workflows/flatpak-channel.yml) workflow runs weekly (every Monday at 00:00 UTC) (and on push / manual dispatch).
    - [`scripts/update_vscode.py`](scripts/update_vscode.py) queries `https://api.github.com/repos/microsoft/vscode/releases/latest` and compares it with [`apps/com.visualstudio.code/VERSION`](apps/com.visualstudio.code/VERSION).
    - When a new VSCode release is published, the script fetches the new `.deb` SHA256 checksums and file sizes from `update.code.visualstudio.com`, updates the Flatpak manifest and AppStream metainfo, and commits the update to `main`.
 2. **Flatpak Build & OSTree Publishing**:

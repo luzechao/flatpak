@@ -2,8 +2,8 @@ name: Flatpak Channel CI
 
 on:
   schedule:
-    # Check for new upstream releases every 6 hours
-    - cron: '0 */6 * * *'
+    # Check for new upstream releases weekly (every Monday at 00:00 UTC)
+    - cron: '0 0 * * 1'
   push:
     branches:
       - main
@@ -11,7 +11,6 @@ on:
       - 'apps/**'
       - 'channel/**'
       - 'scripts/**'
-      - '.github/workflows/flatpak-channel.yml'
   workflow_dispatch:
     inputs:
       force_app:
@@ -33,6 +32,8 @@ jobs:
   check-and-update:
     name: Check Upstream Releases
     runs-on: ubuntu-latest
+    # Prevent GitHub from sending workflow failure notification emails
+    continue-on-error: true
     outputs:
       should_build: ${{ steps.detect.outputs.should_build }}
       apps: ${{ steps.detect.outputs.apps }}
@@ -89,6 +90,8 @@ jobs:
     needs: check-and-update
     if: needs.check-and-update.outputs.should_build == 'true'
     runs-on: ubuntu-latest
+    # Prevent GitHub from sending workflow failure notification emails
+    continue-on-error: true
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v4

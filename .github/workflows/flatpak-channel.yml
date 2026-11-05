@@ -1,0 +1,200 @@
+name: Flatpak Channel CI
+
+on:
+  schedule:
+    # Check for new upstream releases every 6 hours
+    - cron: '0 */6 * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/**'
+      - 'channel/**'
+      - 'scripts/**'
+      - '.github/workflows/flatpak-channel.yml'
+  workflow_dispatch:
+    inputs:
+      force_app:
+        description: 'Force rebuild an app ID (e.g. com.visualstudio.code, or "all")'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: flatpak-channel
+  cancel-in-progress: false
+
+jobs:
+  check-and-update:
+    name: Check Upstream Releases
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.detect.outputs.should_build }}
+      apps: ${{ steps.detect.outputs.apps }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Track latest microsoft/vscode release
+        id: vscode
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/update_vscode.py
+
+      - name: Run custom app updaters (if any)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for updater in apps/*/update.py; do
+            if [ -f "$updater" ]; then
+              echo "Running $updater..."
+              python3 "$updater"
+            fi
+          done
+
+      - name: Commit and push manifest updates to main
+        run: |
+          if [ -n "$(git status --porcelain apps/)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add apps/
+            VERSION=$(cat apps/com.visualstudio.code/VERSION 2>/dev/null || echo "latest")
+            git commit -m "chore(apps): update Flatpak manifests (vscode ${VERSION})"
+            git push origin HEAD:main
+          else
+            echo "No manifest changes to commit."
+          fi
+
+      - name: Detect apps requiring Flatpak build
+        id: detect
+        run: |
+          git fetch origin gh-pages:refs/remotes/origin/gh-pages 2>/dev/null || true
+          if git rev-parse --verify origin/gh-pages >/dev/null 2>&1; then
+            git show origin/gh-pages:apps.json > /tmp/published-apps.json 2>/dev/null || true
+          fi
+          python3 scripts/detect_builds.py \
+            --published-apps-json /tmp/published-apps.json \
+            --force-app "${{ inputs.force_app }}"
+
+  build-and-publish:
+    name: Build & Publish Flatpak Channel
+    needs: check-and-update
+    if: needs.check-and-update.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: source
+
+      - name: Prepare gh-pages branch worktree
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git clone --filter=blob:none "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
+          pushd gh-pages >/dev/null
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git checkout gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+          popd >/dev/null
+
+      - name: Install Flatpak & OSTree build dependencies
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo apt-get update
+          sudo apt-get install -y \
+            flatpak \
+            flatpak-builder \
+            ostree \
+            appstream \
+            util-linux \
+            build-essential \
+            elfutils
+
+      - name: Cache flatpak-builder state (compiled modules like kerberos)
+        uses: actions/cache@v4
+        with:
+          path: |
+            source/.flatpak-builder/build
+            source/.flatpak-builder/rofiles
+            source/.flatpak-builder/cache
+            source/.flatpak-builder/downloads
+          key: flatpak-builder-${{ runner.os }}-${{ hashFiles('source/apps/**/*.yaml', 'source/apps/**/*.yml', 'source/apps/**/*.json') }}
+          restore-keys: |
+            flatpak-builder-${{ runner.os }}-
+
+      - name: Build and export Flatpak packages into channel
+        env:
+          FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+          FLATPAK_GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
+          APPS_TO_BUILD: ${{ needs.check-and-update.outputs.apps }}
+        run: |
+          mkdir -p "${GITHUB_WORKSPACE}/bundles"
+          echo "${APPS_TO_BUILD}" | jq -c '.[]' | while read -r item; do
+            APP_ID=$(echo "$item" | jq -r '.app_id')
+            VERSION=$(echo "$item" | jq -r '.version')
+            echo "=== Building ${APP_ID} (${VERSION}) ==="
+            "${GITHUB_WORKSPACE}/source/scripts/build_and_publish.sh" \
+              "${APP_ID}" \
+              "${GITHUB_WORKSPACE}/gh-pages" \
+              "${GITHUB_WORKSPACE}/bundles/${APP_ID}-${VERSION}.flatpak"
+          done
+
+      - name: Publish OSTree repository to GitHub Pages (gh-pages branch)
+        run: |
+          pushd "${GITHUB_WORKSPACE}/gh-pages" >/dev/null
+          git add -A
+          if [ -n "$(git status --porcelain)" ]; then
+            APPS_SUMMARY=$(echo '${{ needs.check-and-update.outputs.apps }}' | jq -r 'map("\(.app_id)@\(.version)") | join(", ")')
+            git commit -m "publish: ${APPS_SUMMARY}"
+            git push origin HEAD:gh-pages
+          else
+            echo "No changes in gh-pages repository."
+          fi
+          popd >/dev/null
+
+      - name: Publish GitHub Release for newly built versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPS_TO_BUILD: ${{ needs.check-and-update.outputs.apps }}
+        run: |
+          echo "${APPS_TO_BUILD}" | jq -c '.[]' | while read -r item; do
+            APP_ID=$(echo "$item" | jq -r '.app_id')
+            VERSION=$(echo "$item" | jq -r '.version')
+            TAG="${APP_ID}-v${VERSION}"
+            BUNDLE="${GITHUB_WORKSPACE}/bundles/${APP_ID}-${VERSION}.flatpak"
+            FLATPAKREF="${GITHUB_WORKSPACE}/gh-pages/${APP_ID}.flatpakref"
+            if gh release view "${TAG}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+              echo "Release ${TAG} already exists, updating assets..."
+              gh release upload "${TAG}" "${BUNDLE}" "${FLATPAKREF}" --clobber --repo "${{ github.repository }}"
+            else
+              gh release create "${TAG}" "${BUNDLE}" "${FLATPAKREF}" \
+                --repo "${{ github.repository }}" \
+                --title "${APP_ID} ${VERSION}" \
+                --notes "Automated Flatpak build of \`${APP_ID}\` version \`${VERSION}\`.
+
+          ### Install via Flatpak Channel (Recommended)
+          \`\`\`bash
+          flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak remote-add --if-not-exists luzechao https://luzechao.github.io/flatpak/flatpak.flatpakrepo
+          flatpak install luzechao ${APP_ID}
+          \`\`\`
+
+          ### Install via Single-File Bundle
+          \`\`\`bash
+          flatpak install ${APP_ID}-${VERSION}.flatpak
+          \`\`\`"
+            fi
+          done

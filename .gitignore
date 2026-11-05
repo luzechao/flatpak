@@ -1,0 +1,8 @@
+skills/
+.flatpak-builder/
+build/
+bundles/
+gh-pages/
+*.flatpak
+__pycache__/
+*.pyc

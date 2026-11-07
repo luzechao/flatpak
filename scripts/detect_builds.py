@@ -39,6 +39,12 @@ def main() -> None:
         if not app_dir.is_dir():
             continue
         app_id = app_dir.name
+        if not any(
+            (app_dir / f"{app_id}{suffix}").is_file()
+            for suffix in (".yaml", ".yml", ".json")
+        ):
+            print(f"[SKIPPED]      {app_id}: no Flatpak manifest found")
+            continue
         version_file = app_dir / "VERSION"
         version = (
             version_file.read_text(encoding="utf-8").strip()

@@ -66,4 +66,4 @@ This repository is structured to host multiple Flatpak applications in a single 
    └── update.py              # (Optional) Script to auto-update manifest from upstream
    ```
 2. Push to `main` (or trigger the workflow via `workflow_dispatch`).
-3. [`scripts/detect_builds.py`](scripts/detect_builds.py) will automatically detect that `<app-id>@<VERSION>` is not yet published in `gh-pages/apps.json`, build the package, and export it into the existing OSTree repository on `gh-pages` alongside all existing packages.
+3. [`scripts/detect_builds.py`](scripts/detect_builds.py) considers only directories containing an `<app-id>.yaml`, `.yml`, or `.json` manifest. It will automatically detect that `<app-id>@<VERSION>` is not yet published in `gh-pages/apps.json`, build the package, and export it into the existing OSTree repository on `gh-pages` alongside all existing packages.

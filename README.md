@@ -20,16 +20,10 @@ flatpak remote-add --if-not-exists luzechao https://luzechao.github.io/flatpak/f
 flatpak install luzechao com.visualstudio.code
 ```
 
-#### darktable (with AI Subsystem Enabled)
-```bash
-flatpak install luzechao org.darktable.Darktable
-```
-
 Or install directly via `.flatpakref`:
 
 ```bash
 flatpak install https://luzechao.github.io/flatpak/com.visualstudio.code.flatpakref
-flatpak install https://luzechao.github.io/flatpak/org.darktable.Darktable.flatpakref
 ```
 
 ### 3. Update Installed Packages
@@ -45,7 +39,6 @@ flatpak update
 | Application | App ID | Upstream Tracked | Manifest |
 | :--- | :--- | :--- | :--- |
 | **Visual Studio Code** | `com.visualstudio.code` | [`microsoft/vscode`](https://github.com/microsoft/vscode/releases) | [`apps/com.visualstudio.code/com.visualstudio.code.yaml`](apps/com.visualstudio.code/com.visualstudio.code.yaml) |
-| **darktable (AI enabled)** | `org.darktable.Darktable` | [`darktable-org/darktable`](https://github.com/darktable-org/darktable/releases) | [`apps/org.darktable.Darktable/org.darktable.Darktable.json`](apps/org.darktable.Darktable/org.darktable.Darktable.json) |
 
 ---
 
@@ -54,7 +47,6 @@ flatpak update
 1. **Automated Upstream Tracking**:
    - The [Flatpak Channel CI](.github/workflows/flatpak-channel.yml) workflow runs weekly (every Monday at 00:00 UTC) (and on push / manual dispatch).
    - [`scripts/update_vscode.py`](scripts/update_vscode.py) queries `https://api.github.com/repos/microsoft/vscode/releases/latest` and compares it with [`apps/com.visualstudio.code/VERSION`](apps/com.visualstudio.code/VERSION).
-   - [`scripts/update_darktable.py`](scripts/update_darktable.py) queries `https://api.github.com/repos/darktable-org/darktable/releases/latest` and compares it with [`apps/org.darktable.Darktable/VERSION`](apps/org.darktable.Darktable/VERSION), updating the release tarball URL and SHA256 checksum while keeping `onnxruntime` and `-DUSE_AI=ON` enabled.
    - When a new upstream release is published, the updater scripts update the Flatpak manifests and AppStream metainfo and commit the changes to `main`.
 2. **Flatpak Build & OSTree Publishing**:
    - [`scripts/build_and_publish.sh`](scripts/build_and_publish.sh) builds changed applications using `flatpak-builder`, signs the commits and summary with the repository GPG key, exports them into the persistent OSTree repository on the `gh-pages` branch, and publishes static deltas, `.flatpakref` files, and a GitHub Release bundle.

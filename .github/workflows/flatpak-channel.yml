@@ -150,6 +150,7 @@ jobs:
           key: flatpak-builder-${{ runner.os }}-${{ hashFiles('source/apps/**/*.yaml', 'source/apps/**/*.yml', 'source/apps/**/*.json') }}
           restore-keys: |
             flatpak-builder-${{ runner.os }}-
+          save-always: true
 
       - name: Build and export Flatpak packages into channel
         env:

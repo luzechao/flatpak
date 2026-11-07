@@ -376,13 +376,16 @@
             "sources": [
                 {
                     "type": "archive",
-                    "url": "https://gmic.eu/files/source/gmic_4.0.5.tar.gz",
+                    "url": "https://github.com/GreycLab/gmic/releases/download/v.4.0.5/gmic_4.0.5.tar.gz",
+                    "mirror-urls": [
+                        "https://gmic.eu/files/source/gmic_4.0.5.tar.gz"
+                    ],
                     "sha256": "c6771c48693ed615b2e85d1db7a9626358d4606eb2c75dcf009b2924f396da59",
                     "x-checker-data": {
                         "type": "anitya",
                         "project-id": 10217,
                         "stable-only": true,
-                        "url-template": "https://gmic.eu/files/source/gmic_$version.tar.gz"
+                        "url-template": "https://github.com/GreycLab/gmic/releases/download/v.$version/gmic_$version.tar.gz"
                     }
                 }
             ]
@@ -501,7 +504,11 @@
             "sources": [
                 {
                     "type": "archive",
-                    "url": "https://downloads.sourceforge.net/project/potrace/1.16/potrace-1.16.tar.gz",
+                    "url": "https://potrace.sourceforge.net/download/1.16/potrace-1.16.tar.gz",
+                    "mirror-urls": [
+                        "https://deb.debian.org/debian/pool/main/p/potrace/potrace_1.16.orig.tar.gz",
+                        "https://downloads.sourceforge.net/project/potrace/1.16/potrace-1.16.tar.gz"
+                    ],
                     "sha256": "be8248a17dedd6ccbaab2fcc45835bb0502d062e40fbded3bc56028ce5eb7acc"
                 }
             ]

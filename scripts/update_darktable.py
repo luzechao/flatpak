@@ -316,6 +316,45 @@ def build_updated_manifest(
             shared_mod_paths.append(mod)
         if isinstance(mod, dict) and mod.get("name") == "onnxruntime":
             continue
+        if isinstance(mod, dict) and mod.get("name") == "gmic":
+            for src in mod.get("sources", []):
+                if isinstance(src, dict) and src.get("type") == "archive":
+                    m_gmic = re.search(r"gmic_([0-9.]+)\.tar\.gz$", src.get("url", ""))
+                    if m_gmic:
+                        gmic_ver = m_gmic.group(1)
+                        gh_url = f"https://github.com/GreycLab/gmic/releases/download/v.{gmic_ver}/gmic_{gmic_ver}.tar.gz"
+                        orig_url = f"https://gmic.eu/files/source/gmic_{gmic_ver}.tar.gz"
+                        reordered_src: dict = {
+                            "type": "archive",
+                            "url": gh_url,
+                            "mirror-urls": [orig_url],
+                            "sha256": src["sha256"],
+                        }
+                        if "x-checker-data" in src and isinstance(src["x-checker-data"], dict):
+                            checker = dict(src["x-checker-data"])
+                            checker["url-template"] = (
+                                "https://github.com/GreycLab/gmic/releases/download/v.$version/gmic_$version.tar.gz"
+                            )
+                            reordered_src["x-checker-data"] = checker
+                        src.clear()
+                        src.update(reordered_src)
+        if isinstance(mod, dict) and mod.get("name") == "potrace":
+            for src in mod.get("sources", []):
+                if isinstance(src, dict) and src.get("type") == "archive":
+                    m_pot = re.search(r"potrace-([0-9.]+)\.tar\.gz$", src.get("url", ""))
+                    if m_pot:
+                        pot_ver = m_pot.group(1)
+                        reordered_src = {
+                            "type": "archive",
+                            "url": f"https://potrace.sourceforge.net/download/{pot_ver}/potrace-{pot_ver}.tar.gz",
+                            "mirror-urls": [
+                                f"https://deb.debian.org/debian/pool/main/p/potrace/potrace_{pot_ver}.orig.tar.gz",
+                                f"https://downloads.sourceforge.net/project/potrace/{pot_ver}/potrace-{pot_ver}.tar.gz",
+                            ],
+                            "sha256": src["sha256"],
+                        }
+                        src.clear()
+                        src.update(reordered_src)
         if isinstance(mod, dict) and mod.get("name") == "darktable":
             new_modules.append(onnx_mod)
             config_opts = mod.setdefault("config-opts", [])

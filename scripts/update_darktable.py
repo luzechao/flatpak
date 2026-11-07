@@ -389,6 +389,10 @@ def build_updated_manifest(
                     src["url"] = tarball_url
                     src["sha256"] = tarball_sha256
                     break
+        if isinstance(mod, dict) and mod.get("name") == "exiv2":
+            mod.setdefault("build-options", {})[
+                "ldflags"
+            ] = "-Wl,-rpath-link,/app/lib64"
         new_modules.append(mod)
 
     ordered_top["modules"] = new_modules

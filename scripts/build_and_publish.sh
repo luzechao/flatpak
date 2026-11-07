@@ -61,6 +61,7 @@ pushd "${APP_DIR}" >/dev/null
 echo "Building ${APP_ID} from ${MANIFEST}..."
 flatpak-builder \
   --force-clean \
+  --delete-build-dirs \
   --disable-rofiles-fuse \
   --user \
   --install-deps-from=flathub \

@@ -58,6 +58,27 @@ BUILD_DIR="${RUNNER_TEMP:-/tmp}/flatpak-build-${APP_ID}"
 STATE_DIR="${FLATPAK_BUILDER_STATE_DIR:-${ROOT_DIR}/.flatpak-builder}"
 
 pushd "${APP_DIR}" >/dev/null
+echo "Downloading sources for ${APP_ID} from ${MANIFEST}..."
+for attempt in 1 2 3 4; do
+  if flatpak-builder \
+    --download-only \
+    --disable-rofiles-fuse \
+    --user \
+    --install-deps-from=flathub \
+    --default-branch=stable \
+    --state-dir="${STATE_DIR}" \
+    "${BUILD_DIR}" \
+    "${MANIFEST}"; then
+    break
+  fi
+  if [ "${attempt}" -eq 4 ]; then
+    echo "Error: Failed to download sources for ${APP_ID} after 4 attempts." >&2
+    exit 1
+  fi
+  echo "Source download attempt ${attempt} failed, retrying in 10s..."
+  sleep 10
+done
+
 echo "Building ${APP_ID} from ${MANIFEST}..."
 flatpak-builder \
   --force-clean \

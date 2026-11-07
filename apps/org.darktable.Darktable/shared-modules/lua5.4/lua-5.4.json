@@ -17,7 +17,10 @@
         {
             "type": "archive",
             "url": "https://www.lua.org/ftp/lua-5.4.6.tar.gz",
-            "sha256": "7d5ea1b9cb6aa0b59ca3dde1c6adcb57ef83a1ba8e5432c0ecd06bf439b3ad88"
+            "sha256": "7d5ea1b9cb6aa0b59ca3dde1c6adcb57ef83a1ba8e5432c0ecd06bf439b3ad88",
+            "mirror-urls": [
+                "https://src.fedoraproject.org/repo/pkgs/lua/lua-5.4.6.tar.gz/sha512/d90c6903355ee1309cb0d92a8a024522ff049091a117ea21efb585b5de35776191cd67d17a65b18c2f9d374795b7c944f047576f0e3fe818d094b26f0e4845c5/lua-5.4.6.tar.gz"
+            ]
         },
         {
             "type": "patch",

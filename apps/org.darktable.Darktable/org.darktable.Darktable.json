@@ -8,7 +8,9 @@
     "rename-appdata-file": "org.darktable.darktable.appdata.xml",
     "rename-icon": "darktable",
     "copy-icon": true,
-    "no-debuginfo": true,
+    "build-options": {
+        "no-debuginfo": true
+    },
     "finish-args": [
         "--share=ipc",
         "--share=network",

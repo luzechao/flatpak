@@ -152,8 +152,9 @@ jobs:
             flatpak-builder-${{ runner.os }}-
           save-always: true
 
-      - name: Build and export Flatpak packages into channel
+      - name: Build, export, and publish Flatpak packages
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
           FLATPAK_GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
           APPS_TO_BUILD: ${{ needs.check-and-update.outputs.apps }}
@@ -162,37 +163,28 @@ jobs:
           echo "${APPS_TO_BUILD}" | jq -c '.[]' | while read -r item; do
             APP_ID=$(echo "$item" | jq -r '.app_id')
             VERSION=$(echo "$item" | jq -r '.version')
+            BUNDLE="${GITHUB_WORKSPACE}/bundles/${APP_ID}-${VERSION}.flatpak"
+            FLATPAKREF="${GITHUB_WORKSPACE}/gh-pages/${APP_ID}.flatpakref"
+            TAG="${APP_ID}-v${VERSION}"
+
             echo "=== Building ${APP_ID} (${VERSION}) ==="
             "${GITHUB_WORKSPACE}/source/scripts/build_and_publish.sh" \
               "${APP_ID}" \
               "${GITHUB_WORKSPACE}/gh-pages" \
-              "${GITHUB_WORKSPACE}/bundles/${APP_ID}-${VERSION}.flatpak"
-          done
+              "${BUNDLE}"
 
-      - name: Publish OSTree repository to GitHub Pages (gh-pages branch)
-        run: |
-          pushd "${GITHUB_WORKSPACE}/gh-pages" >/dev/null
-          git add -A
-          if [ -n "$(git status --porcelain)" ]; then
-            APPS_SUMMARY=$(echo '${{ needs.check-and-update.outputs.apps }}' | jq -r 'map("\(.app_id)@\(.version)") | join(", ")')
-            git commit -m "publish: ${APPS_SUMMARY}"
-            git push origin HEAD:gh-pages
-          else
-            echo "No changes in gh-pages repository."
-          fi
-          popd >/dev/null
+            echo "=== Publishing ${APP_ID} (${VERSION}) to gh-pages ==="
+            pushd "${GITHUB_WORKSPACE}/gh-pages" >/dev/null
+            git add -A
+            if [ -n "$(git status --porcelain)" ]; then
+              git commit -m "publish: ${APP_ID}@${VERSION}"
+              git push origin HEAD:gh-pages
+            else
+              echo "No changes in gh-pages repository for ${APP_ID}."
+            fi
+            popd >/dev/null
 
-      - name: Publish GitHub Release for newly built versions
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPS_TO_BUILD: ${{ needs.check-and-update.outputs.apps }}
-        run: |
-          echo "${APPS_TO_BUILD}" | jq -c '.[]' | while read -r item; do
-            APP_ID=$(echo "$item" | jq -r '.app_id')
-            VERSION=$(echo "$item" | jq -r '.version')
-            TAG="${APP_ID}-v${VERSION}"
-            BUNDLE="${GITHUB_WORKSPACE}/bundles/${APP_ID}-${VERSION}.flatpak"
-            FLATPAKREF="${GITHUB_WORKSPACE}/gh-pages/${APP_ID}.flatpakref"
+            echo "=== Publishing GitHub Release ${TAG} ==="
             if gh release view "${TAG}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
               echo "Release ${TAG} already exists, updating assets..."
               gh release upload "${TAG}" "${BUNDLE}" "${FLATPAKREF}" --clobber --repo "${{ github.repository }}"
@@ -214,4 +206,5 @@ jobs:
           flatpak install ${APP_ID}-${VERSION}.flatpak
           \`\`\`"
             fi
+            rm -f "${BUNDLE}"
           done

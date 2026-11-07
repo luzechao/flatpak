@@ -241,6 +241,22 @@ def sync_shared_modules(shared_mod_paths: list[str], check_only: bool) -> bool:
                 if not dl_url or not fname:
                     continue
                 content = fetch_text(dl_url)
+                if fname == "lua-5.4.json":
+                    mod_obj = json.loads(content)
+                    for src in mod_obj.get("sources", []):
+                        if isinstance(src, dict) and src.get("url") == "https://www.lua.org/ftp/lua-5.4.6.tar.gz":
+                            src["mirror-urls"] = [
+                                "https://src.fedoraproject.org/repo/pkgs/lua/lua-5.4.6.tar.gz/sha512/d90c6903355ee1309cb0d92a8a024522ff049091a117ea21efb585b5de35776191cd67d17a65b18c2f9d374795b7c944f047576f0e3fe818d094b26f0e4845c5/lua-5.4.6.tar.gz"
+                            ]
+                    content = json.dumps(mod_obj, indent=4) + "\n"
+                elif fname == "intltool-0.51.json":
+                    mod_obj = json.loads(content)
+                    for src in mod_obj.get("sources", []):
+                        if isinstance(src, dict) and src.get("url") == "https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz":
+                            src["mirror-urls"] = [
+                                "https://deb.debian.org/debian/pool/main/i/intltool/intltool_0.51.0.orig.tar.gz"
+                            ]
+                    content = json.dumps(mod_obj, indent=2) + "\n"
                 local_file = APP_DIR / "shared-modules" / sub_dir / fname
                 existing = (
                     local_file.read_text(encoding="utf-8")
@@ -296,16 +312,22 @@ def build_updated_manifest(
     upstream_onnx_mod = find_module(base_data, "onnxruntime")
     base_onnx_mod = upstream_onnx_mod or existing_onnx_mod
 
-    # Ensure no-debuginfo is set right after copy-icon
+    # Ensure build-options.no-debuginfo is set right after copy-icon
     ordered_top: dict = {}
-    inserted_no_debug = False
+    inserted_build_opts = False
     for k, v in base_data.items():
+        if k == "no-debuginfo":
+            continue
         ordered_top[k] = v
         if k == "copy-icon":
-            ordered_top["no-debuginfo"] = True
-            inserted_no_debug = True
-    if not inserted_no_debug:
-        ordered_top["no-debuginfo"] = True
+            bopts = dict(base_data.get("build-options", {}))
+            bopts["no-debuginfo"] = True
+            ordered_top["build-options"] = bopts
+            inserted_build_opts = True
+    if not inserted_build_opts:
+        bopts = dict(ordered_top.get("build-options", {}))
+        bopts["no-debuginfo"] = True
+        ordered_top["build-options"] = bopts
 
     onnx_mod = build_onnxruntime_module(base_onnx_mod, update_onnx=update_onnx)
 

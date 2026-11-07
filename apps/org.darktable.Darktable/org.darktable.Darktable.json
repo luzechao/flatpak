@@ -130,9 +130,6 @@
                 "-DEXIV2_ENABLE_BMFF=ON",
                 "-DEXIV2_BUILD_SAMPLES=OFF"
             ],
-            "build-options": {
-                "ldflags": "-Wl,-rpath-link,/app/lib64"
-            },
             "sources": [
                 {
                     "type": "archive",
@@ -145,7 +142,10 @@
                         "url-template": "https://github.com/Exiv2/exiv2/archive/refs/tags/v$version.tar.gz"
                     }
                 }
-            ]
+            ],
+            "build-options": {
+                "ldflags": "-Wl,-rpath-link,/app/lib64"
+            }
         },
         "shared-modules/intltool/intltool-0.51.json",
         {

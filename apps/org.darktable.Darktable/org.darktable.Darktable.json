@@ -130,6 +130,9 @@
                 "-DEXIV2_ENABLE_BMFF=ON",
                 "-DEXIV2_BUILD_SAMPLES=OFF"
             ],
+            "build-options": {
+                "ldflags": "-Wl,-rpath-link,/app/lib64"
+            },
             "sources": [
                 {
                     "type": "archive",
